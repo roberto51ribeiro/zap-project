@@ -1,0 +1,8 @@
+{
+  "name": "ZappReserve - AI WhatsApp Automation Manager",
+  "description": "A comprehensive dashboard for managing AI-driven WhatsApp reservations, featuring a manager availability controller, booking logs, and a Gemini-powered chat simulator.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
