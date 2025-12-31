@@ -1,0 +1,173 @@
+{
+    "name": "ZapPreserve WhatsApp Automation",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "whatsapp",
+                "options": {}
+            },
+            "name": "WhatsApp Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "model": "gpt-3.5-turbo",
+                "prompt": {
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a helpful assistant for a restaurant 'ZapPreserve'. \nOpening Hours:\n- Mon-Thu: 18:00 - 23:00\n- Fri-Sat: 18:00 - 00:00\n- Sun: 18:00 - 23:00\n\nAnswer questions about opening hours and reservations politely. Keep responses concise for WhatsApp."
+                        },
+                        {
+                            "role": "user",
+                            "content": "={{ $json.body.body }}"
+                        }
+                    ]
+                }
+            },
+            "name": "AI Assistant",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "YOUR_OPENAI_CREDENTIAL_ID",
+                    "name": "OpenAI Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "schema": {
+                    "__rl": true,
+                    "value": "public",
+                    "mode": "list",
+                    "cachedResultName": "public"
+                },
+                "table": {
+                    "__rl": true,
+                    "value": "conversations",
+                    "mode": "list",
+                    "cachedResultName": "conversations"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "phone": "={{ $node[\"WhatsApp Webhook\"].json.body.from }}",
+                        "message_body": "={{ $node[\"WhatsApp Webhook\"].json.body.body }}",
+                        "role": "user",
+                        "ai_response": "={{ $json.content }}"
+                    },
+                    "matchingColumns": [],
+                    "schema": [
+                        {
+                            "id": "phone",
+                            "displayName": "phone",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "readOnly": false,
+                            "removed": false
+                        },
+                        {
+                            "id": "message_body",
+                            "displayName": "message_body",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "readOnly": false,
+                            "removed": false
+                        }
+                    ]
+                }
+            },
+            "name": "Save to Supabase",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+                    "name": "Supabase Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://170.245.14.184:3000/send-message",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "phone",
+                            "value": "={{ $node[\"WhatsApp Webhook\"].json.body.from }}"
+                        },
+                        {
+                            "name": "message",
+                            "value": "={{ $node[\"AI Assistant\"].json.content }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Send WhatsApp Reply",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                700,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "WhatsApp Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "AI Assistant",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Assistant": {
+            "main": [
+                [
+                    {
+                        "node": "Save to Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save to Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp Reply",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
